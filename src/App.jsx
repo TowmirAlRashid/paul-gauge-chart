@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { useEffect, useState } from "react";
 
 import ChartCard from "./components/ChartCard";
@@ -9,8 +9,6 @@ const ZOHO = window.ZOHO;
 
 function App() {
   const [initialized, setInitialized] = useState(false) // initialize the widget
-  const [entity, setEntity] = useState() // get the current entity
-  const [entityId, setEntityId] = useState() // get the current entity ID
   const [currentUser, setCurrentUser] = useState() // owner of the deals
 
   const [targetDeals, setTargetDeals] = useState([]) // keeps the target Deals
@@ -67,15 +65,14 @@ function App() {
     const fetchData = async () => {
       if(initialized) {
         const salesGoalResp = await ZOHO.CRM.CONFIG.getCurrentUser() //get the record data for current sales goal
-        console.log(salesGoalResp?.users?.[0]?.id)
-        let current_user = salesGoalResp?.users?.[0]?.id;
-        current_user = "2728756000000162861";
+        let current_user = salesGoalResp?.users?.[0]?.id; // the current user id
+        current_user = "2728756000000162861";   // fixed currently
 
         const conn_name = "zoho_crm_conn";
         let req_data = {
           parameters: {
             select_query:
-              `select id, Amount, Deal_Name, Decision_Date from Deals where ((Owner = '${current_user}' and Stage not in ('Deal Lost' , 'Lost Request')) and Decision_Date between '2023-01-01' and '${todayFormat()}')`,
+              `select id, Amount, Deal_Name, Decision_Date from Deals where ((Owner = '${current_user}' and Stage not in ('Deal Lost' , 'Lost Request')) and Decision_Date between '2023-01-01' and '${todayFormat()}') limit 0, 400 `,
           },
           method: "POST",
           url: "https://www.zohoapis.com/crm/v4/coql",
@@ -97,7 +94,6 @@ function App() {
         }
 
         const goalsResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_data_goals) // target goals module values collected
-        console.log(goalsResp?.details?.statusMessage?.data?.[0])
         setCurrentUser(goalsResp?.details?.statusMessage?.data?.[0])
       }
     }
@@ -118,12 +114,12 @@ function App() {
   }
 
 
-  const monthlyAmount = targetDeals.filter(deal => {
+  const monthlyAmount = targetDeals.filter(deal => {  // the monthly deals amount in total
     return (new Date(deal.Decision_Date) >= new Date('2022-12-31') &&  new Date(deal.Decision_Date) <= new Date('2023-02-01'))
   }).reduce((prevValue, currentData) => prevValue + currentData.Amount, 0)
-  const monthlyTarget = currentUser?.[getCurrentMonth()]
+  const monthlyTarget = currentUser?.[getCurrentMonth()] // monthly sales goal target
 
-  const monthlyDatewiseTarget = () => {
+  const monthlyDatewiseTarget = () => { // gets the dynamic target goal amount for days passed in this month till today
     let monthTarget = monthlyTarget;
     let currentMonth = new Date().getMonth()
     let totalDaysOfThisMonthInNumber = new Date(new Date().getFullYear(), currentMonth, 0).getDate()
@@ -144,8 +140,6 @@ function App() {
           p: "1rem 1rem"
         }}
       >
-        {/* <Typography sx={{ marginBottom: "2rem" }} variant="h5">Annual Sales Goal for <strong>{currentUser?.data?.[0]?.Owner.name}</strong></Typography>
-        {yearlyDatewiseTarget(52)} */}
         <Box
           sx={{
             width: "100%",
@@ -161,7 +155,7 @@ function App() {
               width: "48%"
             }}
           >
-            <ChartCard 
+            <ChartCard  // year to date chart
               labelOfChart="Year to Date"
               colors={["#FFC371", "#FF5F6D"]}
               target={yearlyTarget}
@@ -178,8 +172,8 @@ function App() {
               width: "48%",
             }}
           >
-            <ChartCard 
-              labelOfChart="Monthly Target"
+            <ChartCard  // month to date chart
+              labelOfChart="Month to Date"
               colors={["#FFC371", "#FF5F6D"]}
               target={monthlyTarget}
               arcsLength={[monthlyDatewiseTarget(), 1 - monthlyDatewiseTarget()]}
@@ -193,7 +187,7 @@ function App() {
       </Box>
     );
   } else {
-    return <FetchingDataUI />
+    return <FetchingDataUI /> // loader UI
   }
   
 }
