@@ -290,7 +290,7 @@ function App() {
         <Box
           sx={{
             width: "100%",
-            mb: "2rem",
+            mb: "1rem",
             height: `calc(111px + ${10 * 30}px)` // changes the height according to the number of rows, default row height is 52px in MUI datagrid => top10Deals.length
           }}
         >
@@ -307,25 +307,25 @@ function App() {
         <Box
           sx={{
             width: "100%",
-            mb: "1.5rem"
+            // mb: "1.5rem"
           }}
         >
-          <Typography variant="h6" textAlign="center" mb={5}>Report Links</Typography>
+          <Typography variant="h6" textAlign="center" mb={1}>Report Links</Typography>
 
           <Box
             sx={{
               width: "100%",
               display: "grid",
-              gridTemplateColumns: "auto auto",
+              gridTemplateColumns: "auto auto auto auto",
               padding: "1rem",
               gap: "1rem",
               ml: "1rem"
             }}
           >
-            <Button variant="contained" sx={{ width: "18rem" }}>Link 1</Button>
-            <Button variant="contained" sx={{ width: "18rem" }}>Link 2</Button>
-            <Button variant="contained" sx={{ width: "18rem" }}>Link 3</Button>
-            <Button variant="contained" sx={{ width: "18rem" }}>Link 4</Button>
+            <Button href="" target="_blank" rel="noreferrer" variant="contained" sx={{ width: "8rem" }}>Link 1</Button>
+            <Button href="" target="_blank" rel="noreferrer" variant="contained" sx={{ width: "8rem" }}>Link 2</Button>
+            <Button href="" target="_blank" rel="noreferrer" variant="contained" sx={{ width: "8rem" }}>Link 3</Button>
+            <Button href="" target="_blank" rel="noreferrer" variant="contained" sx={{ width: "8rem" }}>Link 4</Button>
           </Box>
         </Box>
       </Box>
