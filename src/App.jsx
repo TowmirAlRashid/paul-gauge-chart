@@ -1,4 +1,5 @@
-import { Box } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
 import { useEffect, useState } from "react";
 
 import ChartCard from "./components/ChartCard";
@@ -12,6 +13,9 @@ function App() {
   const [currentUser, setCurrentUser] = useState() // owner of the deals
 
   const [targetDeals, setTargetDeals] = useState([]) // keeps the target Deals
+
+  const [currentUserForTopDeals, setCurrentUserForTopDeals] = useState() // gets the current user to get his top 10 deals
+  const [top10Deals, setTop10Deals] = useState([]) // holds the top 10 deals
 
   useEffect(() => { // initialize the app
     ZOHO.embeddedApp.on("PageLoad", function (data) { 
@@ -65,8 +69,10 @@ function App() {
     const fetchData = async () => {
       if(initialized) {
         const salesGoalResp = await ZOHO.CRM.CONFIG.getCurrentUser() //get the record data for current sales goal
-        let current_user = salesGoalResp?.users?.[0]?.id; // the current user id
-        current_user = "2728756000000162861";   // fixed currently
+        let current_user_for_top10_deals = salesGoalResp?.users?.[0]?.id; // the current user id
+
+        setCurrentUserForTopDeals(current_user_for_top10_deals) // gets the current user id for top 10 deals
+        let current_user = "2728756000000162861";   // fixed currently
 
         const conn_name = "zoho_crm_conn";
         let req_data = {
@@ -79,9 +85,8 @@ function App() {
           param_type: 2,
         }
   
-        const dealsResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_data) // target deals collected
-        // console.log(dealsResp)
-        setTargetDeals(dealsResp?.details?.statusMessage?.data)
+        const dealsForGaugeResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_data) // target deals collected
+        setTargetDeals(dealsForGaugeResp?.details?.statusMessage?.data)
 
         let req_data_goals = {
           parameters: {
@@ -95,10 +100,32 @@ function App() {
 
         const goalsResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_data_goals) // target goals module values collected
         setCurrentUser(goalsResp?.details?.statusMessage?.data?.[0])
+
+
+        let req_data_for_top10_deals = {
+          parameters: {
+            select_query:
+              `select id, Amount, Deal_Name, Last_Follow_Up_Date, Days_From_Now from Deals where (Owner = '${currentUserForTopDeals}' and Stage not in ('Deal Completed', 'Deal Lost' , 'Lost Request')) ORDER BY Amount DESC limit 10`,
+          },
+          method: "POST",
+          url: "https://www.zohoapis.com/crm/v4/coql",
+          param_type: 2,
+        }
+
+        const topDealsResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_data_for_top10_deals) // target deals collected for top 10 deals
+        let finalDealsArray = topDealsResp?.details?.statusMessage?.data?.map((deal, index) => { // adds a custom property to the deals to show the rank of each deal
+          return {
+            ...deal,
+            "rank": index + 1
+          }
+        })
+        console.log(topDealsResp?.details?.statusMessage?.data)
+
+        setTop10Deals(finalDealsArray)
       }
     }
     fetchData();
-  }, [initialized])
+  }, [initialized, currentUserForTopDeals])
 
   const yearlyAmount = targetDeals.reduce((prevValue, currentData) => prevValue + currentData.Amount, 0) // gets the total deal amount of this year
   const yearlyTarget = currentUser?.Annual // gets the annual sales goal amount
@@ -130,24 +157,99 @@ function App() {
     return currentTarget / monthTarget;
   }
 
+  const formatter = new Intl.NumberFormat('en-US', { // js formatter for currency
+    style: 'currency',
+    currency: 'USD',
+  });
+
+  const columns = [ // custom columns for the top 10 deals 
+    { 
+      field: 'rank', 
+      headerName: 'Rank', 
+      flex: 1
+    },
+    {
+      field: 'Deal_Name',
+      headerName: 'Deal name',
+      renderCell: (params) => (
+        <Box>
+            <a 
+              href={`https://crm.zoho.com/crm/org651752009/tab/Potentials/${params.row.id}`} // adds the deal id from the current row data to the custom link
+              style={{ 
+                color: "#1976d2",
+                textDecoration: "none"
+              }}
+              target="_blank"
+              rel="noreferrer"
+              >
+                {params.value}
+            </a>
+        </Box>
+      ),
+      flex: 4
+    },
+    {
+      field: 'Amount',
+      headerName: 'Amount',
+      renderCell: (params) => (
+        <Box
+          sx={{backgroundColor: "#439454", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+            <Typography sx={{ fontSize: "small", color: "white" }}>
+                {formatter.format(params.value)}
+            </Typography>
+        </Box>
+      ),
+      flex: 1.5
+    },
+    {
+      field: 'Last_Follow_Up_Date',
+      headerName: 'Last Contact Date',
+      renderCell: (params) => (
+        <Box>
+            <Typography fontSize="small">
+                {params.value === null ? "Needs Update" : params.value}
+            </Typography>
+        </Box>
+      ),
+      flex: 2
+    },
+    {
+      field: 'Days_From_Now',
+      headerName: 'Age',
+      renderCell: (params) => (
+        <Box>
+            <Typography sx={{ color: `${params.value > 45 ? "red" : "black"}`, fontWeight: `${params.value > 45 ? "bold" : ""}` }} fontSize="small">
+                {params.value}
+            </Typography>
+        </Box>
+      ),
+      flex: 1.5
+    }
+  ];
 
 
-  if(currentUser){
+
+  if(top10Deals && currentUser){
     return (
       <Box
         sx={{
           width: "100%",
+          height: "100%",
           p: "1rem 1rem"
         }}
       >
         <Box
           sx={{
             width: "100%",
+            height: "15rem",
             display: "flex",
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
-            gap: "1rem"
+            gap: "1rem",
+            mb: "2.5rem",
+            mt: "1.5rem"
           }}
         >
           <Box
@@ -182,6 +284,48 @@ function App() {
               percent={(monthlyAmount / monthlyTarget) > 1 ? 1 : (monthlyAmount / monthlyTarget)}
               amount={monthlyAmount}
             />
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            width: "100%",
+            mb: "2rem",
+            height: `calc(111px + ${10 * 30}px)` // changes the height according to the number of rows, default row height is 52px in MUI datagrid => top10Deals.length
+          }}
+        >
+          <DataGrid
+            rows={top10Deals}
+            columns={columns}
+            pageSize={10}
+            rowsPerPageOptions={[10]}
+            disableSelectionOnClick
+            rowHeight={30}
+          />
+        </Box>
+
+        <Box
+          sx={{
+            width: "100%",
+            mb: "1.5rem"
+          }}
+        >
+          <Typography variant="h6" textAlign="center" mb={5}>Report Links</Typography>
+
+          <Box
+            sx={{
+              width: "100%",
+              display: "grid",
+              gridTemplateColumns: "auto auto",
+              padding: "1rem",
+              gap: "1rem",
+              ml: "1rem"
+            }}
+          >
+            <Button variant="contained" sx={{ width: "18rem" }}>Link 1</Button>
+            <Button variant="contained" sx={{ width: "18rem" }}>Link 2</Button>
+            <Button variant="contained" sx={{ width: "18rem" }}>Link 3</Button>
+            <Button variant="contained" sx={{ width: "18rem" }}>Link 4</Button>
           </Box>
         </Box>
       </Box>

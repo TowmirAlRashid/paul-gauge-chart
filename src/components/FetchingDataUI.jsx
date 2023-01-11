@@ -21,7 +21,7 @@ const FetchingDataUI = () => {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                mt: "9rem"
+                mt: "15rem"
             }}
          >
             <CircularProgress color="secondary" sx={{ mb: "1rem" }} />
